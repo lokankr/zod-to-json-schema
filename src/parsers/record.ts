@@ -11,6 +11,7 @@ type JsonSchema7RecordPropertyNamesType =
 export type JsonSchema7RecordType = {
   type: "object";
   additionalProperties: JsonSchema7Type;
+  properties?: Record<string, JsonSchema7Type>;
   propertyNames?: JsonSchema7RecordPropertyNamesType;
 };
 
@@ -42,7 +43,27 @@ export function parseRecordDef(
       ...schema,
       propertyNames: keyType,
     };
-  } else if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodEnum) {
+  }
+
+  if (def.keyType?._def.typeName === ZodFirstPartyTypeKind.ZodEnum) {
+    if (refs.target === "openApi3") {
+      return {
+        ...schema,
+        properties: {
+          ...Object.fromEntries(
+            // @ts-ignore
+            def.keyType._def.values.map((value) => [
+              value,
+              parseDef(def.valueType._def, {
+                ...refs,
+                currentPath: [...refs.currentPath, "properties", value],
+              }),
+            ])
+          ),
+        },
+      };
+    }
+
     return {
       ...schema,
       propertyNames: {
